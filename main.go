@@ -117,6 +117,12 @@ func getLocation(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getMyLocation(w http.ResponseWriter, r *http.Request) {
+
+	ipAddr := getIP(r)
+	log.Println(ipAddr)
+}
+
 func validateIP(ip string) error {
 
 	if net.ParseIP(ip) == nil {
@@ -130,6 +136,7 @@ func setupRoutes() {
 
 	http.HandleFunc("/", homePage)
 	http.HandleFunc("/getlocation", getLocation)
+	http.HandleFunc("/getmylocation", getMyLocation)
 	fs := http.FileServer(http.Dir("static"))
 	http.Handle("/static/", http.StripPrefix("/static", fs))
 }
@@ -216,4 +223,12 @@ type IPStackResponseError struct {
 		Type string `json:"type"`
 		Info string `json:"info"`
 	} `json:"error"`
+}
+
+func getIP(r *http.Request) string {
+	forwarded := r.Header.Get("X-FORWARDED-FOR")
+	if forwarded != "" {
+		return forwarded
+	}
+	return r.RemoteAddr
 }

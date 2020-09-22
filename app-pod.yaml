@@ -7,6 +7,6 @@ metadata:
 spec:
   containers:
     - name: go-app
-      image: jeshocarmel/simple_go_app
+      image: jeshocarmel/ip_location_mapper
       ports:
         - containerPort: 8080

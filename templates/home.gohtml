@@ -27,22 +27,97 @@
         </style>
         <!-- Custom styles for this template -->
         <link href="/static/css/floating-labels.css" rel="stylesheet">
+
+        <!-- for maps -->
+        <script src = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+        <link rel = "stylesheet" href = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
     </head>
     <body>
-        <form class="form-signin" method="POST" action="/getlocation">
-            <div class="text-center mb-4">
-                <img class="mb-4" src="/static/assets/symbol.svg" alt="" width="72" height="72">
-                <h1 class="h3 mb-3 font-weight-normal">IP Location Tracker</h1>
-                <p>Find location of any IP address<br/><code><a href="https://caniuse.com/#feat=css-placeholder-shown">Click here to find your location.</a></code></p>
+
+        {{/* <form class="form-signin"> */}}
+        <div class="container">
+
+            <div class="row">
+
+                <div class="col-md-4">
+                    <div class="text-center mb-4">
+                        <img class="mb-4" src="/static/assets/symbol.svg" alt="" width="72" height="72">
+                        <h1 class="h3 mb-3 font-weight-normal">IP Location Tracker</h1>
+                        <p>Find location of any IP address<br/><code><a href="/getmylocation">Click here to find your location.</a></code></p>
+                    </div>
+
+                    <div class="form-label-group">
+                        <input type="text" id="ipaddress" name="ipaddress" class="form-control" placeholder="e.g. 192.168.0.1" required autofocus>
+                        <label for="ipaddress">Enter IP address</label>
+                    </div>
+                    
+                    <button class="btn btn-lg btn-primary btn-block" id="locatebtn" type="button">Locate</button>
+
+                </div>
+
+                <div class="col-md-8">
+                    <div id = "locmap"></div>
+                </div>
+
             </div>
 
-            <div class="form-label-group">
-                <input type="text" id="ipaddress" name="ipaddress" class="form-control" placeholder="e.g. 192.168.0.1" required autofocus>
-                <label for="ipaddress">Enter IP address</label>
-            </div>
-            
-            <button class="btn btn-lg btn-primary btn-block" type="submit">Locate</button>
-            <p class="mt-5 mb-3 text-muted text-center">&copy; 2020-2021</p>
-        </form>
+        </div>
+
+        <script>
+
+        document.getElementById('locmap').innerHTML = "<div id='map' style ='height: 400px'></div>";
+
+         var mymap = L.map('map', {center: [51.505, -0.09],zoom: 17});
+        //var mymap = L.map("mapid");
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            //maxZoom: 1,
+	        //minZoom:1,
+        }).addTo(mymap);
+        L.marker([37.980114, 23.729924]).addTo(mymap);
+   
+        mymap.fitWorld();
+
+
+
+            $('[id^=locatebtn]').on('click', function(e){
+                e.preventDefault();
+                var ipaddress =$("#ipaddress").val();
+                
+                $.ajax({
+                    url:"/getlocation",
+                    type: "POST",
+                    data:{"ipaddress":ipaddress},
+                    success: function(result){
+
+                        document.getElementById('locmap').innerHTML = "<div id='map' style ='height: 400px'></div>";
+
+                        result= JSON.parse(result);
+
+                        var longitude = result.longitude;
+                        var latitude = result.latitude;
+                        var ip = result.ip
+                        var city = result.city
+                        var country = result.country_name
+
+                        var marker = ip + "<br>[ " + city +","+ country + " ]"
+                        
+                        var map = L.map('map').setView([latitude,longitude], 17);
+                        // Creating a Layer object
+                        var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+                  
+                        L.marker([latitude,longitude]).addTo(map)
+                        .bindPopup(marker)
+                        .openPopup();
+                        
+                        // Adding layer to the map
+                        map.addLayer(layer);
+                    },
+
+                    error: function (request, status, error) {    
+                        alert(request.responseText);
+                    }
+                });
+            });
+        </script>
    </body>
 </html>
