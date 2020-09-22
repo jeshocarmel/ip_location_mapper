@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: go-app
+  labels:
+    app: go-app
+spec:
+  containers:
+    - name: go-app
+      image: jeshocarmel/simple_go_app
+      ports:
+        - containerPort: 8080
