@@ -1,7 +1,12 @@
-### to start a docker container running redis on your local
 
-docker build -t jeshocarmel/ip_location_mapper:latest .
-docker run -it --env IPSTACK_API_KEY=<IPSTACK_API_KEY> -p 8080:8080 jeshocarmel/ip_location_mapper
-docker push jeshocarmel/ip_location_mapper
+## IP Location Tracker
 
-docker run -p 6379:6379 --name some-redis -d redis --requirepass "YOUR_PASSWORD_HERE"
+### To start the app on development server
+
+- make start apikey=<IPSTACK_API_KEY>
+- make start apikey=<IPSTACK_API_KEY> redis-url=<REDIS_HOST:PORT> redis-password=<REDIS_PASSWORD>
+
+
+### To build the project and push to dockerhub
+
+- make push

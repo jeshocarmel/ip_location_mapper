@@ -37,13 +37,15 @@
         {{/* <form class="form-signin"> */}}
         <div class="container">
 
+            <div id="alertmsg"></div>
+
             <div class="row">
 
                 <div class="col-md-4">
                     <div class="text-center mb-4">
                         <img class="mb-4" src="/static/assets/symbol.svg" alt="" width="72" height="72">
                         <h1 class="h3 mb-3 font-weight-normal">IP Location Tracker</h1>
-                        <p>Find location of any IP address<br/><code><a href="/getmylocation">Click here to find your location.</a></code></p>
+                        <p>Find location of any IP address<br/><code><a href="/getmylocation" style="cursor: pointer;" id="mylocation">Click here to find your location.</a></code></p>
                     </div>
 
                     <div class="form-label-group">
@@ -51,7 +53,7 @@
                         <label for="ipaddress">Enter IP address</label>
                     </div>
                     
-                    <button class="btn btn-lg btn-primary btn-block" id="locatebtn" type="button">Locate</button>
+                    <button class="btn btn-lg btn-primary btn-block" style="cursor: pointer;" id="locatebtn" type="button">Locate</button>
 
                 </div>
 
@@ -65,52 +67,98 @@
 
         <script>
 
-        document.getElementById('locmap').innerHTML = "<div id='map' style ='height: 400px'></div>";
+            $( document ).ready(function() {
+                document.getElementById('locmap').innerHTML = "<div id='map' style ='height: 400px'></div>";
 
-         var mymap = L.map('map', {center: [51.505, -0.09],zoom: 17});
-        //var mymap = L.map("mapid");
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            //maxZoom: 1,
-	        //minZoom:1,
-        }).addTo(mymap);
-        L.marker([37.980114, 23.729924]).addTo(mymap);
-   
-        mymap.fitWorld();
+                var mymap = L.map('map', {center: [51.505, -0.09],zoom: 17});
+                //var mymap = L.map("mapid");
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    //maxZoom: 1,
+                    //minZoom:1,
+                }).addTo(mymap);
+                L.marker([37.980114, 23.729924]).addTo(mymap);
+        
+                mymap.fitWorld();
+                
+            });
 
+            function displayInMap(result){
 
+                $('.alert').alert('close')
+
+                document.getElementById('locmap').innerHTML = "<div id='map' style ='height: 400px'></div>";
+                var longitude = result.longitude;
+                var latitude = result.latitude;
+                var ip = result.ip
+                var city = result.city
+                var country = result.country_name
+
+                var marker = ip + "<br>[ " + city +","+ country + " ]"
+                        
+                var map = L.map('map').setView([latitude,longitude], 17);
+                        // Creating a Layer object
+                var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+                  
+                L.marker([latitude,longitude]).addTo(map)
+                    .bindPopup(marker)
+                    .openPopup();
+                        
+                        // Adding layer to the map
+                map.addLayer(layer);
+            }
+
+            function displayError(error){
+
+                $("#alertmsg").html('<div class="alert alert-danger alert-dismissible fade show" role="alert"> \
+                    <strong>Holy guacamole!</strong>&nbsp;' + error +' \
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"> \
+                    <span aria-hidden="true">&times;</span></button> \
+                    </div>')
+                }
+
+            $("a").click(function (e) {
+                e.preventDefault();
+                var href = $(this).attr("href");
+
+                 $.ajax({
+                    url: href,
+                    type: "POST",
+                    success: function(result){
+                        result= JSON.parse(result);
+                        
+                        if(result.error){
+                            displayError(result.error)
+                        }else{
+                            displayInMap(result);
+                        }
+                    },
+                    error: function (request, status, error) {    
+                        alert(request.responseText);
+                    }
+                }); 
+            });
 
             $('[id^=locatebtn]').on('click', function(e){
                 e.preventDefault();
                 var ipaddress =$("#ipaddress").val();
+
+                if(!ipaddress){
+                    alert('enter an ipaddress !!');
+                    return
+                }
                 
                 $.ajax({
                     url:"/getlocation",
                     type: "POST",
                     data:{"ipaddress":ipaddress},
                     success: function(result){
-
-                        document.getElementById('locmap').innerHTML = "<div id='map' style ='height: 400px'></div>";
-
                         result= JSON.parse(result);
 
-                        var longitude = result.longitude;
-                        var latitude = result.latitude;
-                        var ip = result.ip
-                        var city = result.city
-                        var country = result.country_name
-
-                        var marker = ip + "<br>[ " + city +","+ country + " ]"
-                        
-                        var map = L.map('map').setView([latitude,longitude], 17);
-                        // Creating a Layer object
-                        var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-                  
-                        L.marker([latitude,longitude]).addTo(map)
-                        .bindPopup(marker)
-                        .openPopup();
-                        
-                        // Adding layer to the map
-                        map.addLayer(layer);
+                        if(result.error){
+                            displayError(result.error)
+                        }else{
+                            displayInMap(result);
+                        }
                     },
 
                     error: function (request, status, error) {    

@@ -10,3 +10,10 @@ spec:
       image: jeshocarmel/ip_location_mapper
       ports:
         - containerPort: 8080
+      env:
+        - name: IPSTACK_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secret
+              key: apikey
+

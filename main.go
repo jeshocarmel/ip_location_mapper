@@ -73,43 +73,15 @@ func getLocation(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 
-		// apiURL := fmt.Sprintf("%s%s?access_key=%s", defaultIPStackURL, ipaddress, "f31c198f0daa774d2b2604243676cc34")
-		apiURL := fmt.Sprintf("%s%s?access_key=%s", defaultIPStackURL, ipaddress, os.Getenv("IPSTACK_API_KEY"))
-		resp, err := http.Get(apiURL)
+		apiResponse, err := callAPI(ipaddress)
 		if err != nil {
 			panic(err)
 		}
 
-		if resp.StatusCode != http.StatusOK {
-			panic(errors.New("invalid response obtained from ipstack api"))
-		}
-
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			panic(err)
-		}
-
-		var ipStackFail IPStackResponseError
-		err = json.Unmarshal(body, &ipStackFail)
-		if err != nil {
-			panic(err)
-		}
-
-		//check if ipStackFail struct empty i.e. making sure the response from ipstack is not a failure response
-		if ipStackFail == (IPStackResponseError{}) {
-			var ipStackResponseSuccess IPStackResponseSuccess
-			err = json.Unmarshal(body, &ipStackResponseSuccess)
-			if err != nil {
-				panic(err)
-			} else {
-				w.WriteHeader(http.StatusOK)
-				w.Header().Set("Content-Type", "application/json")
-				tmp, _ := json.Marshal(ipStackResponseSuccess)
-				w.Write(tmp)
-			}
-		} else {
-			panic(errors.New(ipStackFail.Error.Info))
-		}
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		tmp, _ := json.Marshal(apiResponse)
+		w.Write(tmp)
 
 	case "GET":
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -119,8 +91,40 @@ func getLocation(w http.ResponseWriter, r *http.Request) {
 
 func getMyLocation(w http.ResponseWriter, r *http.Request) {
 
-	ipAddr := getIP(r)
-	log.Println(ipAddr)
+	switch r.Method {
+
+	case "POST":
+
+		// to handle panics
+		defer func() {
+			msg := recover()
+			if msg != nil { //catch
+				errMsg := fmt.Sprintf(msg.(error).Error())
+				myMap := make(map[string]interface{})
+				myMap["error"] = errMsg
+				tmp, _ := json.Marshal(myMap)
+				w.WriteHeader(http.StatusOK)
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(tmp)
+			}
+		}()
+
+		ipAddr := getIP(r)
+
+		apiResponse, err := callAPI(ipAddr)
+		if err != nil {
+			panic(err)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		tmp, _ := json.Marshal(apiResponse)
+		w.Write(tmp)
+
+	case "GET":
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 }
 
 func validateIP(ip string) error {
@@ -149,9 +153,10 @@ func main() {
 }
 
 func connectToRedis() {
+
 	rdb = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: os.Getenv("redis-password"), // no password set
+		Addr:     os.Getenv("REDIS_URL"),
+		Password: os.Getenv("REDIS_PASSWORD"), // no password set
 		DB:       0,                           // use default DB
 	})
 
@@ -185,6 +190,56 @@ func getTimeAgoForMillis(tUnixNano int64) string {
 	return timeago.English.Format(t)
 }
 
+func getIP(r *http.Request) string {
+	forwarded := r.Header.Get("X-FORWARDED-FOR")
+	if forwarded != "" {
+		return forwarded
+	}
+	return r.RemoteAddr
+}
+
+func callAPI(ipaddress string) (*IPStackResponseSuccess, error) {
+
+	apiURL := fmt.Sprintf("%s%s?access_key=%s", defaultIPStackURL, ipaddress, os.Getenv("IPSTACK_API_KEY"))
+	resp, err := http.Get(apiURL)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("invalid response obtained from ipstack api")
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var ipStackFail IPStackResponseError
+	err = json.Unmarshal(body, &ipStackFail)
+	if err != nil {
+		return nil, err
+	}
+
+	//check if ipStackFail struct empty i.e. making sure the response from ipstack is not a failure response
+	if ipStackFail == (IPStackResponseError{}) {
+		var ipStackResponseSuccess IPStackResponseSuccess
+		err = json.Unmarshal(body, &ipStackResponseSuccess)
+		if err != nil {
+			return nil, err
+		}
+
+		//store in redis
+		err = rdb.Set(ctx, ipaddress, ipStackResponseSuccess, time.Hour*24).Err()
+		if err != nil {
+			log.Error(err)
+		}
+		return &ipStackResponseSuccess, nil
+
+	}
+	return nil, errors.New(ipStackFail.Error.Info)
+}
+
 //IPStackResponseSuccess is the response object from ipstack
 type IPStackResponseSuccess struct {
 	IP            string  `json:"ip"`
@@ -215,6 +270,20 @@ type IPStackResponseSuccess struct {
 	} `json:"location"`
 }
 
+//MarshalBinary ...
+func (obj *IPStackResponseSuccess) MarshalBinary() ([]byte, error) {
+	return json.Marshal(obj)
+}
+
+// UnmarshalBinary -
+func (obj *IPStackResponseSuccess) UnmarshalBinary(data []byte) error {
+	if err := json.Unmarshal(data, &obj); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 //IPStackResponseError ...
 type IPStackResponseError struct {
 	Success bool `json:"success"`
@@ -223,12 +292,4 @@ type IPStackResponseError struct {
 		Type string `json:"type"`
 		Info string `json:"info"`
 	} `json:"error"`
-}
-
-func getIP(r *http.Request) string {
-	forwarded := r.Header.Get("X-FORWARDED-FOR")
-	if forwarded != "" {
-		return forwarded
-	}
-	return r.RemoteAddr
 }

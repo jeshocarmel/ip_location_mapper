@@ -1,0 +1,12 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: go-app
+spec:
+  selector:
+    app: go-app
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+  type: NodePort
