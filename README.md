@@ -1,9 +1,20 @@
 
 ## IP Location Tracker
 
+An app to trace the location of an IP address. The IP address is provided as input and the GPS coordinates for that IP is shown in a map.
+
+**Flow:**
+- API Requests are made to [ipstack.com](https://ipstack.com/) to get the coordinates.
+- The results are stored in a redis cache with ttl of 24 hours.
+
+**Architecture**
+
+![Image of Yaktocat](https://raw.githubusercontent.com/jeshocarmel/ip_location_mapper/master/Untitled.png)
+
+
 ### Prerequisites
 
-- an api key from [ipstack](https://ipstack.com/). ipstack provides 10,000 api requests free per month.
+- an api key from [ipstack](https://ipstack.com/). free tier available with 10,000 api requests per month.
 
 ### To start the app on docker client
 
