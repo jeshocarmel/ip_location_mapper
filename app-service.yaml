@@ -1,12 +1,14 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: go-app
+  name: go-app-service
 spec:
-  selector:
-    app: go-app
+  type: LoadBalancer
   ports:
-  - protocol: TCP
+  - name: http
     port: 80
     targetPort: 8080
-  type: NodePort
+    
+  selector:
+      app: go-app
+  

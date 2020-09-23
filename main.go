@@ -127,15 +127,6 @@ func getMyLocation(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func validateIP(ip string) error {
-
-	if net.ParseIP(ip) == nil {
-		return errors.New("invalid ip address")
-	}
-
-	return nil
-}
-
 func setupRoutes() {
 
 	http.HandleFunc("/", homePage)
@@ -200,6 +191,13 @@ func getIP(r *http.Request) string {
 
 func callAPI(ipaddress string) (*IPStackResponseSuccess, error) {
 
+	//check if ipaddress available in cache
+	cacheResp, err := getFromCache(ipaddress)
+	if err == nil && cacheResp != nil {
+		log.Infof("response obtained from cache for ipaddress: %s", ipaddress)
+		return cacheResp, nil
+	}
+
 	apiURL := fmt.Sprintf("%s%s?access_key=%s", defaultIPStackURL, ipaddress, os.Getenv("IPSTACK_API_KEY"))
 	resp, err := http.Get(apiURL)
 	if err != nil {
@@ -230,7 +228,7 @@ func callAPI(ipaddress string) (*IPStackResponseSuccess, error) {
 		}
 
 		//store in redis
-		err = rdb.Set(ctx, ipaddress, ipStackResponseSuccess, time.Hour*24).Err()
+		err = rdb.Set(ctx, ipaddress, &ipStackResponseSuccess, time.Hour*24).Err()
 		if err != nil {
 			log.Error(err)
 		}
@@ -292,4 +290,29 @@ type IPStackResponseError struct {
 		Type string `json:"type"`
 		Info string `json:"info"`
 	} `json:"error"`
+}
+
+func validateIP(ip string) error {
+
+	if net.ParseIP(ip) == nil {
+		return errors.New("invalid ip address")
+	}
+
+	return nil
+}
+
+func getFromCache(ipaddress string) (*IPStackResponseSuccess, error) {
+
+	cacheData, err := rdb.Get(ctx, ipaddress).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	var obj IPStackResponseSuccess
+	err = obj.UnmarshalBinary([]byte(cacheData))
+	if err != nil {
+		return nil, err
+	}
+
+	return &obj, nil
 }
