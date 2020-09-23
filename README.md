@@ -26,4 +26,27 @@ If you have a redis cluster running anywhere, then use the below command.
 > Note: kindly check the Makefile before performing a push. The dockerhub repository in Makefile points to **jeshocarmel/ip_location_mapper**
 
 
+### To start the project on minikube
+
+```bash
+minikube start
+kubectl apply -f app-secret.yaml
+kubectl apply -f app-deployment.yaml
+kubectl apply -f app-service.yaml 
+minikube service go-app-service
+```
+
+To check the logs of the pods 
+
+- to view last 20 lines
+
+```bash
+kubectl logs --tail=20 deployment/go-app
+```
+
+- to stream logs
+
+```bash
+kubectl logs -f deployment/go-app
+```
 
