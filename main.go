@@ -17,7 +17,6 @@ import (
 	redis "github.com/go-redis/redis/v8"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
-	"github.com/xeonx/timeago"
 )
 
 var templates *template.Template
@@ -43,6 +42,67 @@ func init() {
 	templates = template.Must(template.New("").Funcs(funcMap).ParseGlob("templates/*.gohtml"))
 
 }
+
+func main() {
+	setupRoutes()
+	connectToRedis()
+	log.Info("Go Web App Started on Port 8080")
+	http.ListenAndServe(":8080", nil)
+}
+
+func setupRoutes() {
+
+	http.HandleFunc("/", homePage)
+	http.HandleFunc("/getlocation", getLocation)
+	http.HandleFunc("/getmylocation", getMyLocation)
+	fs := http.FileServer(http.Dir("static"))
+	http.Handle("/static/", http.StripPrefix("/static", fs))
+}
+
+func connectToRedis() {
+
+	rdb = redis.NewClient(&redis.Options{
+		Addr:     os.Getenv("REDIS_URL"),
+		Password: os.Getenv("REDIS_PASSWORD"), // no password set
+		DB:       0,                           // use default DB
+	})
+
+	pong, err := rdb.Ping(ctx).Result()
+	if err == nil {
+		log.Info(pong, err)
+	} else {
+		log.Error(err)
+	}
+}
+
+func createFuncMap() template.FuncMap {
+
+	// funcmap for go templates
+	funcMap := template.FuncMap{
+
+		/*
+
+			"getTimeAgo": func(t time.Time) string {
+				return timeago.English.Format(t)
+			},
+			"getTimeAgoForMillis": func(tUnix int64) string {
+				return getTimeAgoForMillis(tUnix)
+			},
+
+		*/
+	}
+
+	return funcMap
+}
+
+/*
+
+func getTimeAgoForMillis(tUnixNano int64) string {
+	t := time.Unix(0, tUnixNano)
+	return timeago.English.Format(t)
+}
+
+*/
 
 func homePage(w http.ResponseWriter, r *http.Request) {
 	templates.ExecuteTemplate(w, "home.gohtml", nil)
@@ -73,7 +133,7 @@ func getLocation(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 
-		apiResponse, err := callAPI(ipaddress)
+		apiResponse, err := makeAPIRequest(ipaddress)
 		if err != nil {
 			panic(err)
 		}
@@ -92,7 +152,6 @@ func getLocation(w http.ResponseWriter, r *http.Request) {
 func getMyLocation(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
-
 	case "POST":
 
 		// to handle panics
@@ -111,7 +170,7 @@ func getMyLocation(w http.ResponseWriter, r *http.Request) {
 
 		ipAddr := getIP(r)
 
-		apiResponse, err := callAPI(ipAddr)
+		apiResponse, err := makeAPIRequest(ipAddr)
 		if err != nil {
 			panic(err)
 		}
@@ -127,60 +186,6 @@ func getMyLocation(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func setupRoutes() {
-
-	http.HandleFunc("/", homePage)
-	http.HandleFunc("/getlocation", getLocation)
-	http.HandleFunc("/getmylocation", getMyLocation)
-	fs := http.FileServer(http.Dir("static"))
-	http.Handle("/static/", http.StripPrefix("/static", fs))
-}
-
-func main() {
-	log.Info("Go Web App Started on Port 8080")
-	setupRoutes()
-	connectToRedis()
-	http.ListenAndServe(":8080", nil)
-}
-
-func connectToRedis() {
-
-	rdb = redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_URL"),
-		Password: os.Getenv("REDIS_PASSWORD"), // no password set
-		DB:       0,                           // use default DB
-	})
-
-	pong, err := rdb.Ping(ctx).Result()
-	if err == nil {
-		log.Info(pong, err)
-	} else {
-		log.Error(err)
-	}
-	// Output: PONG <nil>
-}
-
-func createFuncMap() template.FuncMap {
-
-	// funcmap for go templates
-	funcMap := template.FuncMap{
-
-		"getTimeAgo": func(t time.Time) string {
-			return timeago.English.Format(t)
-		},
-		"getTimeAgoForMillis": func(tUnix int64) string {
-			return getTimeAgoForMillis(tUnix)
-		},
-	}
-
-	return funcMap
-}
-
-func getTimeAgoForMillis(tUnixNano int64) string {
-	t := time.Unix(0, tUnixNano)
-	return timeago.English.Format(t)
-}
-
 func getIP(r *http.Request) string {
 	forwarded := r.Header.Get("X-FORWARDED-FOR")
 	if forwarded != "" {
@@ -189,9 +194,9 @@ func getIP(r *http.Request) string {
 	return r.RemoteAddr
 }
 
-func callAPI(ipaddress string) (*IPStackResponseSuccess, error) {
+func makeAPIRequest(ipaddress string) (*IPStackResponseSuccess, error) {
 
-	//check if ipaddress available in cache
+	//check if ipaddress available in cache before calling the API
 	cacheResp, err := getFromCache(ipaddress)
 	if err == nil && cacheResp != nil {
 		log.Infof("response obtained from cache for ipaddress: %s", ipaddress)
@@ -278,7 +283,6 @@ func (obj *IPStackResponseSuccess) UnmarshalBinary(data []byte) error {
 	if err := json.Unmarshal(data, &obj); err != nil {
 		return err
 	}
-
 	return nil
 }
 
