@@ -5,11 +5,11 @@ An app to trace the location of an IP address. The IP address is provided as inp
 
 **Flow:**
 - API Requests are made to [ipstack.com](https://ipstack.com/) to get the coordinates.
-- The results are stored in a redis cache with ttl of 24 hours.
+- The results are stored in a redis cache with TTL 24 hours.
 
 **Architecture**
 
-![Image of Yaktocat](https://raw.githubusercontent.com/jeshocarmel/ip_location_mapper/master/Untitled.png)
+![Image of Yaktocat](https://raw.githubusercontent.com/jeshocarmel/ip_location_mapper/master/architecture.png)
 
 
 ### Prerequisites
@@ -22,7 +22,7 @@ An app to trace the location of an IP address. The IP address is provided as inp
      make start apikey=<IPSTACK_API_KEY>
   ```
 
-If you have a redis cluster running anywhere, then use the below command.
+If you have a redis cluster/single node running anywhere, then use the below command.
 
 ```bash
     make start apikey=<IPSTACK_API_KEY> redis-url=<REDIS_HOST:PORT> redis-password=<REDIS_PASSWORD>
@@ -34,7 +34,7 @@ If you have a redis cluster running anywhere, then use the below command.
     make push
 ```
 
-> Note: kindly check the Makefile before performing a push. The dockerhub repository in Makefile points to **jeshocarmel/ip_location_mapper**
+> Note: kindly view the Makefile before performing a push. The dockerhub repository in Makefile points to **jeshocarmel/ip_location_mapper**
 
 
 ### To start the project on minikube
