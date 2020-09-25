@@ -12,6 +12,7 @@ RUN go mod download
 # Copy the source from the current directory to the Working Directory inside the container
 COPY . .
 
+# Expose the 8080 port
 EXPOSE 8080
 
 # Build the Go app
