@@ -53,6 +53,8 @@ func main() {
 func setupRoutes() {
 
 	http.HandleFunc("/", homePage)
+	http.HandleFunc("/health", healthHandler)
+	http.HandleFunc("/readiness", readinessHandler)
 	http.HandleFunc("/getlocation", getLocation)
 	http.HandleFunc("/getmylocation", getMyLocation)
 	fs := http.FileServer(http.Dir("static"))
@@ -103,6 +105,14 @@ func getTimeAgoForMillis(tUnixNano int64) string {
 }
 
 */
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+func readinessHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
 
 func homePage(w http.ResponseWriter, r *http.Request) {
 	templates.ExecuteTemplate(w, "home.gohtml", nil)
@@ -187,11 +197,16 @@ func getMyLocation(w http.ResponseWriter, r *http.Request) {
 }
 
 func getIP(r *http.Request) string {
-	forwarded := r.Header.Get("X-FORWARDED-FOR")
-	if forwarded != "" {
-		return forwarded
+
+	IPAddress := r.Header.Get("X-Real-Ip")
+	if IPAddress == "" {
+		IPAddress = r.Header.Get("X-Forwarded-For")
 	}
-	return r.RemoteAddr
+	if IPAddress == "" {
+		IPAddress, _, _ = net.SplitHostPort(r.RemoteAddr)
+	}
+
+	return IPAddress
 }
 
 func makeAPIRequest(ipaddress string) (*IPStackResponseSuccess, error) {
