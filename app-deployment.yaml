@@ -18,9 +18,51 @@ spec:
                   imagePullPolicy: Always
                   ports:
                     - containerPort: 8080
-                  env:
+                  livenessProbe:           # To check the health of the Pod
+                    httpGet:
+                      path: /health
+                      port: 8080
+                      scheme: HTTP
+                    initialDelaySeconds: 5
+                    periodSeconds: 15
+                    timeoutSeconds: 5
+                  readinessProbe:          # To check if the Pod is ready to serve traffic or not
+                    httpGet:
+                      path: /readiness
+                      port: 8080
+                      scheme: HTTP
+                    initialDelaySeconds: 5
+                    timeoutSeconds: 1   
+                  env:                  # env variables passed to the app
                     - name: IPSTACK_API_KEY
                       valueFrom:
                         secretKeyRef:
                             name: app-secret
                             key: apikey
+                            
+                    - name: REDIS_URL
+                      valueFrom:
+                        configMapKeyRef:
+                            name: app-configmap
+                            key: redis-service
+
+                    - name: REDIS_PASSWORD
+                      valueFrom:
+                        secretKeyRef:
+                            name: app-secret
+                            key: redis-password
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: go-app-service
+spec:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    
+  selector:
+      app: go-app
+  

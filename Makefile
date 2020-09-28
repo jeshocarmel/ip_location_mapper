@@ -11,7 +11,7 @@ endif
 
 push:
 	make build
-	docker push jeshocarmel/ip_location_mapper	
+	docker push jeshocarmel/ip_location_mapper
 
 
 

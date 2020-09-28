@@ -33,19 +33,47 @@ An app to trace the location of an IP address. The IP address is provided as inp
 
 ### To start the project on minikube
 
+**1. start minikube**
 ```bash
 minikube start
-kubectl apply -f minikube_config_files/redis-cluster-secret.yml
-helm repo add bitnami https://charts.bitnami.com/bitnami
-helm install my-release bitnami/redis --values minikube_config_file/values-minikube.yml
-kubectl apply -f app-configmap.yaml
+```
+
+**2. create secret**
+```
 kubectl apply -f app-secret.yaml
+kubectl describe secrets/app-secret
+```
+
+**3. add helm repo to install redis cluster**
+```
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm install my-release bitnami/redis --values minikube_files/values-minikube.yml
+```
+
+**4. create configmap**
+```
+kubectl apply -f app-configmap.yaml
+kubectl describe configmap/app-configmap
+```
+
+**5. create deployment and service**
+```
 kubectl apply -f app-deployment.yaml
-kubectl apply -f app-service.yaml 
+```
+
+**6. view everything you have created**
+```
+kubectl get all
+```
+
+**7. expose service via minikube**
+```
 minikube service go-app-service
 ```
 
-To check the logs of the pods 
+###### Additional Info
+
+Checking logs of pods
 
 - to view last 20 lines
 
@@ -59,3 +87,10 @@ kubectl logs --tail=20 deployment/go-app
 kubectl logs -f deployment/go-app
 ```
 
+To delete everything (pods + deployment + service + statefulset) initiate the following commands
+```
+kubectl delete deployment/go-app
+kubectl delete service/go-app-service
+helm delete my-release
+minikube delete
+```
