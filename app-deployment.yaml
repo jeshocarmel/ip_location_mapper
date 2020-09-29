@@ -1,24 +1,24 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: Deployment # mentions this is a Deployment
 metadata:
-    name: go-app
+    name: go-app # name of Deployment
 spec:
-    replicas: 2
+    replicas: 2 # creates 2 replicated Pods
     selector:
         matchLabels:
-            app: go-app
+            app: go-app # defines how the Deployment finds which Pods to manage
     template:
         metadata:
             labels:
-                app: go-app
-        spec:
+                app: go-app # specifies that the Pods are to be named as go-app
+        spec: # specification for each Pod .This block indicates that the Pods run one container 'go-app-container', which runs the jeshocarmel/ip_location_mapper dockerhub image .
             containers:
-                - name: go-app
-                  image: jeshocarmel/ip_location_mapper
-                  imagePullPolicy: Always
+                - name: go-app-container # name of the container running inside the Pod
+                  image: jeshocarmel/ip_location_mapper # image to deployed in the container
+                  imagePullPolicy: Always # pull image from the repository (dockerhub) always
                   ports:
-                    - containerPort: 8080
-                  livenessProbe:           # To check the health of the Pod
+                    - containerPort: 8080 # run on port 8080
+                  livenessProbe: # To check the health of the Pod
                     httpGet:
                       path: /health
                       port: 8080
@@ -26,44 +26,44 @@ spec:
                     initialDelaySeconds: 5
                     periodSeconds: 15
                     timeoutSeconds: 5
-                  readinessProbe:          # To check if the Pod is ready to serve traffic or not
+                  readinessProbe: # To check if the Pod is ready to serve traffic or not
                     httpGet:
                       path: /readiness
                       port: 8080
                       scheme: HTTP
                     initialDelaySeconds: 5
                     timeoutSeconds: 1   
-                  env:                  # env variables passed to the app
-                    - name: IPSTACK_API_KEY
+                  env: # list of env variables passed to the app
+                    - name: IPSTACK_API_KEY # IPSTACK_API_KEY is used inside the app
                       valueFrom:
                         secretKeyRef:
-                            name: app-secret
-                            key: apikey
+                            name: app-secret # name of the secret
+                            key: apikey # import the value of 'apikey' from app-secret
                             
-                    - name: REDIS_URL
+                    - name: REDIS_URL # REDIS_URL is the hostname for the redis cluster 
                       valueFrom:
                         configMapKeyRef:
-                            name: app-configmap
-                            key: redis-service
+                            name: app-configmap # name of the config-map
+                            key: redis-service # import the value of 'redis-service' from app-configmap
 
-                    - name: REDIS_PASSWORD
+                    - name: REDIS_PASSWORD # REDIS_PASSWORD is used by the app to authenticate with the redis host
                       valueFrom:
                         secretKeyRef:
-                            name: app-secret
-                            key: redis-password
+                            name: app-secret # name of the secret
+                            key: redis-password # import the value of 'redis-password' from app-secret
 ---
-kind: Service
+kind: Service # mentions this is a service
 apiVersion: v1
 metadata:
-  name: go-app-service
+  name: go-app-service # name of service
 spec:
-  type: NodePort
+  type: NodePort # service type to be NodePort
   ports:
   - name: http
-    port: 80
-    targetPort: 8080
-    nodePort: 30000
+    port: 80 # serve on port 80
+    targetPort: 8080 # reach to port 8080 of all the Pods in the selector block
+    nodePort: 30000 # use port 30000 as nodePort
     
   selector:
-      app: go-app
+      app: go-app # The set of Pods with name'go-app' is targeted by this Service 
   
